@@ -129,6 +129,10 @@ export default function App() {
   const [scanningSuccess, setScanningSuccess] = useState<boolean>(false);
   const [scanningProgress, setScanningProgress] = useState<number>(0);
 
+  // Driver Custom Trip Ratings & Comments
+  const [tripRatings, setTripRatings] = useState<{[orderId: number]: number}>({});
+  const [tripComments, setTripComments] = useState<{[orderId: number]: string}>({});
+
   // Auth User Simulated State
   const [authAdmin, setAuthAdmin] = useState<any>({ id: 1, name: 'System Admin', email: 'admin@smarttrans.com' });
   const [authSeller, setAuthSeller] = useState<any>({ id: 1, name: 'Apex Goods Ltd', email: 'sales@apex.com' });
@@ -136,9 +140,7 @@ export default function App() {
   const [authDriver, setAuthDriver] = useState<any>({ id: 1, name: 'Rajesh Kumar', email: 'raj@cargo.com' });
   const [authReceiver, setAuthReceiver] = useState<any>({ id: 1, name: 'John Doe', email: 'buyer_john@gmail.com' });
 
-  // Code Hub Active Code Tab
-  const [codeTab, setCodeTab] = useState<string>('sql');
-  const [projectTemplates, setProjectTemplates] = useState<any>(null);
+  // Code Hub states removed as requested completed by agent
   const [driverPerformance, setDriverPerformance] = useState<any>(null);
 
   // Form Submissions
@@ -200,22 +202,9 @@ export default function App() {
     }
   };
 
-  const loadCodeExports = async () => {
-    try {
-      const resp = await safeFetch('/api/student/exports');
-      setProjectTemplates(resp);
-    } catch (err: any) {
-      console.error("Failed to load schema guidelines", err);
-    }
-  };
-
   useEffect(() => {
     refreshDatabase();
   }, [activeRole]);
-
-  useEffect(() => {
-    loadCodeExports();
-  }, []);
 
   const triggerToast = (type: 'success' | 'error', text: string) => {
     if (type === 'success') {
@@ -438,6 +427,23 @@ export default function App() {
     refreshDatabase();
   };
 
+  const handleRateTripRoute = async (orderId: number, rating: number, feedback: string) => {
+    try {
+      const resp = await safeFetch(`/api/driver/delivery/${orderId}/rate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rating, feedback })
+      });
+      if (resp.success) {
+        triggerToast('success', "Trip route assessment recorded in central system database logs successfully.");
+        refreshDatabase();
+      }
+    } catch (err: any) {
+      console.error(err);
+      triggerToast('error', `Failed to rate route: ${err.message || 'Check connection.'}`);
+    }
+  };
+
   const startQRScan = (orderId: number) => {
     setScanningProgress(0);
     setScanningSuccess(false);
@@ -614,7 +620,6 @@ export default function App() {
             <option value="transporter">3. TRANSPORTER FLEET Hub</option>
             <option value="driver">4. DRIVER HANDHELD Simulator</option>
             <option value="receiver">5. RECEIVER PORTAL & Tracking</option>
-            <option value="codehub">🎓 SUBMISSION EXPORT (Django / MySQL)</option>
           </select>
           <button 
             onClick={toggleTheme}
@@ -681,33 +686,6 @@ export default function App() {
                 <div className="mt-2 text-[10px] bg-pink-50 text-pink-700 px-2.5 py-1 rounded font-bold font-mono">FAST CHECKOUT ACTIVE</div>
               </div>
             )}
-            {activeRole === 'codehub' && (
-              <div>
-                <div className="text-sm font-bold text-indigo-900">Academic Code Export</div>
-                <div className="text-xs text-gray-500">Submission Code Archive</div>
-                <div className="mt-2 text-[10px] bg-indigo-100 text-indigo-800 px-2.5 py-1 rounded font-bold font-mono">READY FOR SUBMISSION</div>
-              </div>
-            )}
-          </div>
-
-          {/* Academic File Architecture Map Checklist */}
-          <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col">
-            <div className="text-[10px] font-mono text-gray-400 uppercase tracking-widest mb-3 flex items-center justify-between">
-              <span>SQL Tables & Django Files</span>
-              <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
-            </div>
-            <ul className="space-y-1.5 text-xs text-gray-600 font-mono">
-              <li className="flex items-center space-x-2 text-indigo-700 font-semibold bg-gray-50 p-1 rounded">
-                <Database className="w-3.5 h-3.5 text-indigo-500" />
-                <span className="truncate">smart_transport_db</span>
-              </li>
-              <li className="pl-4 border-l border-gray-100 hover:text-indigo-600 cursor-pointer" onClick={() => {setActiveRole('codehub'); setCodeTab('sql');}}>sql_schema.sql</li>
-              <li className="pl-4 border-l border-gray-100 hover:text-indigo-600 cursor-pointer text-indigo-800 font-bold" onClick={() => {setActiveRole('codehub'); setCodeTab('models');}}>models.py</li>
-              <li className="pl-4 border-l border-gray-100 hover:text-indigo-600 cursor-pointer" onClick={() => {setActiveRole('codehub'); setCodeTab('views');}}>views.py</li>
-              <li className="pl-4 border-l border-gray-100 hover:text-indigo-600 cursor-pointer" onClick={() => {setActiveRole('codehub'); setCodeTab('urls');}}>urls.py</li>
-              <li className="pl-4 border-l border-gray-100 hover:text-indigo-600 cursor-pointer" onClick={() => {setActiveRole('codehub'); setCodeTab('forms');}}>forms.py</li>
-              <li className="pl-4 border-l border-gray-100 hover:text-indigo-600 cursor-pointer text-green-700 font-bold" onClick={() => {setActiveRole('codehub'); setCodeTab('readme');}}>INSTALLATION_GUIDE.md</li>
-            </ul>
           </div>
 
           {/* System Performance indicators */}
@@ -765,8 +743,8 @@ export default function App() {
                 <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 bg-red-50">
                   <div className="text-xs font-bold text-red-500 uppercase tracking-tighter mb-1">System Complaints</div>
                   <div className="text-2xl font-black text-red-600">{sysStats.systemAlertedIssues}</div>
-                  <div className="mt-2 text-[10px] text-red-600 font-bold underline cursor-pointer" onClick={() => setActiveRole('codehub')}>
-                    View Code Architecture
+                  <div className="mt-2 text-[10px] text-red-500 font-bold font-mono">
+                    Active Resolution System
                   </div>
                 </div>
               </div>
@@ -1790,38 +1768,144 @@ export default function App() {
                     </div>
 
                     {/* Stage upgrading actions */}
-                    <div className="flex flex-wrap items-center gap-2 border-t pt-3 justify-between">
-                      <div className="flex space-x-1.5">
-                        {dd.status === 'assigned' && (
-                          <>
-                            <button onClick={() => handleUpdateDriverStatus(dd.orderId, 'picked-up', "Cargo loaded. Gate cleared.")} className="bg-indigo-650 hover:bg-indigo-700 text-white px-3 py-1.5 rounded font-bold text-[10px]">
-                              🚚 MARK AS PICKED UP (FROM DEPOT)
+                    {dd.status !== 'delivered' ? (
+                      <div className="flex flex-wrap items-center gap-2 border-t pt-3 justify-between">
+                        <div className="flex space-x-1.5">
+                          {dd.status === 'assigned' && (
+                            <>
+                              <button onClick={() => handleUpdateDriverStatus(dd.orderId, 'picked-up', "Cargo loaded. Gate cleared.")} className="bg-indigo-650 hover:bg-indigo-700 text-white px-3 py-1.5 rounded font-bold text-[10px]">
+                                🚚 MARK AS PICKED UP (FROM DEPOT)
+                              </button>
+                              <button 
+                                onClick={() => startQRScan(dd.orderId)} 
+                                className="bg-purple-650 hover:bg-purple-700 text-white px-3 py-1.5 rounded font-bold text-[10px] flex items-center space-x-1.5 border border-purple-500 shadow-sm"
+                              >
+                                <QrCode className="w-3.5 h-3.5 text-purple-200" />
+                                <span>SCAN SHIPMENT QR (FAST PICK-UP)</span>
+                              </button>
+                            </>
+                          )}
+                          {dd.status === 'picked-up' && (
+                            <button onClick={() => handleUpdateDriverStatus(dd.orderId, 'in-transit', "Cruising National Highway bypass.")} className="bg-amber-500 hover:bg-amber-600 text-white px-3 py-1.5 rounded font-bold text-[10px]">
+                              ⚡ START IN-TRANSIT ROUTING
                             </button>
-                            <button 
-                              onClick={() => startQRScan(dd.orderId)} 
-                              className="bg-purple-650 hover:bg-purple-700 text-white px-3 py-1.5 rounded font-bold text-[10px] flex items-center space-x-1.5 border border-purple-500 shadow-sm"
-                            >
-                              <QrCode className="w-3.5 h-3.5 text-purple-200" />
-                              <span>SCAN SHIPMENT QR (FAST PICK-UP)</span>
+                          )}
+                          {['picked-up', 'in-transit', 'assigned'].includes(dd.status) && (
+                            <button onClick={() => handleUpdateDriverStatus(dd.orderId, 'delivered', "Goods handed over directly to client container base.")} className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded font-bold text-[10px]">
+                              ✔️ CONFIRM SECURE DELIVERED
                             </button>
-                          </>
-                        )}
-                        {dd.status === 'picked-up' && (
-                          <button onClick={() => handleUpdateDriverStatus(dd.orderId, 'in-transit', "Cruising National Highway bypass.")} className="bg-amber-500 hover:bg-amber-600 text-white px-3 py-1.5 rounded font-bold text-[10px]">
-                            ⚡ START IN-TRANSIT ROUTING
-                          </button>
-                        )}
-                        {['picked-up', 'in-transit', 'assigned'].includes(dd.status) && (
-                          <button onClick={() => handleUpdateDriverStatus(dd.orderId, 'delivered', "Goods handed over directly to client container base.")} className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded font-bold text-[10px]">
-                            ✔️ CONFIRM SECURE DELIVERED
-                          </button>
-                        )}
-                      </div>
+                          )}
+                        </div>
 
-                      <button onClick={() => handleTriggerSOS(dd.orderId)} className="bg-red-600 hover:bg-red-700 text-white px-3.5 py-1.5 rounded font-bold text-[10px] flex items-center space-x-1 scale-95 hover:scale-100 transition">
-                        <AlertTriangle className="w-3.5 h-3.5" /> <span>EMERGENCY SOS BEACON</span>
-                      </button>
-                    </div>
+                        <button onClick={() => handleTriggerSOS(dd.orderId)} className="bg-red-600 hover:bg-red-700 text-white px-3.5 py-1.5 rounded font-bold text-[10px] flex items-center space-x-1 scale-95 hover:scale-100 transition">
+                          <AlertTriangle className="w-3.5 h-3.5" /> <span>EMERGENCY SOS BEACON</span>
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="mt-4 bg-emerald-50/70 border border-emerald-200 rounded-xl p-4 font-mono text-xs text-slate-800">
+                        <div className="flex items-center space-x-2 text-emerald-800 font-bold mb-3 border-b border-emerald-150 pb-2">
+                          <CheckCircle className="w-5 h-5 text-emerald-600" />
+                          <span className="uppercase text-[11px] tracking-wider">🚚 TRIP SUMMARY & PERFORMANCE LOG</span>
+                        </div>
+                        
+                        {/* Highlights Grid */}
+                        <div className="grid grid-cols-2 gap-3 mb-4">
+                          <div className="bg-white/95 p-3 rounded-lg border border-emerald-100 shadow-xs">
+                            <span className="text-[9px] text-gray-500 uppercase block font-bold mb-1">Total Distance Covered</span>
+                            <div className="flex items-center space-x-1.5">
+                              <MapPin className="w-4 h-4 text-emerald-600" />
+                              <span className="text-sm font-black text-slate-900 font-mono">{dd.distance || 18.5} km</span>
+                            </div>
+                            <span className="text-[8px] text-slate-400 font-mono block mt-0.5">Calculated via active GPS</span>
+                          </div>
+                          
+                          <div className="bg-white/95 p-3 rounded-lg border border-emerald-100 shadow-xs">
+                            <span className="text-[9px] text-gray-500 uppercase block font-bold mb-1">Trip Duration</span>
+                            <div className="flex items-center space-x-1.5">
+                              <Clock className="w-4 h-4 text-indigo-600" />
+                              <span className="text-sm font-black text-slate-900 font-mono">{dd.duration_minutes || 42} mins</span>
+                            </div>
+                            <span className="text-[8px] text-slate-400 font-mono block mt-0.5">Start-to-end timestamp</span>
+                          </div>
+                        </div>
+
+                        {/* Interactive Rating of Route Quality */}
+                        <div className="bg-white/95 p-3.5 rounded-lg border border-emerald-100 shadow-xs space-y-3">
+                          <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
+                            <span className="text-[10px] text-slate-700 font-bold uppercase tracking-wider">Assess Route Quality & Hazards:</span>
+                            <span className="text-[9px] text-indigo-600 font-bold uppercase font-mono bg-indigo-50 px-1.5 py-0.2 rounded">Safety Audit</span>
+                          </div>
+                          
+                          <div className="flex flex-col space-y-1">
+                            <span className="text-[9px] text-slate-500">How would you rate this route option for cargo dispatch?</span>
+                            <div className="flex items-center space-x-1">
+                              {[1, 2, 3, 4, 5].map((star) => {
+                                const activeRating = tripRatings[dd.orderId] !== undefined ? tripRatings[dd.orderId] : (dd.route_rating || 0);
+                                const isFilled = star <= activeRating;
+                                return (
+                                  <button
+                                    key={star}
+                                    type="button"
+                                    disabled={dd.route_rating !== null}
+                                    onClick={() => setTripRatings(prev => ({ ...prev, [dd.orderId]: star }))}
+                                    className={`p-1 transition-all ${dd.route_rating !== null ? 'cursor-not-allowed opacity-85' : 'hover:scale-110 active:scale-95 focus:outline-none'}`}
+                                  >
+                                    <Star 
+                                      className={`w-6 h-6 ${
+                                        isFilled 
+                                          ? 'text-amber-400 fill-amber-400' 
+                                          : 'text-slate-200'
+                                      } transition-colors`} 
+                                    />
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          {/* Comments or feedback input */}
+                          <div className="space-y-1">
+                            <label className="text-[9px] text-slate-500 uppercase block font-bold">Route Experience Remarks:</label>
+                            {dd.route_rating !== null ? (
+                              <div className="bg-slate-50 p-2.5 rounded text-[10.5px] italic border border-slate-200 text-slate-600 font-sans leading-relaxed">
+                                "{dd.route_feedback || 'No unique hazards reported; road surface condition nominal.'}"
+                              </div>
+                            ) : (
+                              <textarea
+                                placeholder="State any bypass blockades, heavy congestion, surface hazards, or safety remarks here..."
+                                value={tripComments[dd.orderId] || ''}
+                                onChange={(e) => setTripComments(prev => ({ ...prev, [dd.orderId]: e.target.value }))}
+                                className="w-full bg-white border border-slate-200 rounded p-2 text-[10.5px] text-slate-800 font-sans focus:outline-none focus:ring-1 focus:ring-indigo-400 focus:border-indigo-400"
+                                rows={2}
+                              />
+                            )}
+                          </div>
+
+                          {dd.route_rating === null && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const currentRating = tripRatings[dd.orderId] || 0;
+                                if (currentRating === 0) {
+                                  triggerToast('error', "Please specify a star rating (1-5) before submitting route feedback.");
+                                  return;
+                                }
+                                handleRateTripRoute(dd.orderId, currentRating, tripComments[dd.orderId] || '');
+                              }}
+                              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg font-bold text-[10.5px] tracking-wide transition shadow-sm uppercase font-sans cursor-pointer"
+                            >
+                              💾 SUBMIT TRIP ASSESSMENT TO CARRIER RECORD
+                            </button>
+                          )}
+
+                          {dd.route_rating !== null && (
+                            <div className="text-center text-[10px] font-bold text-emerald-800 bg-emerald-100/60 py-1.5 rounded-lg border border-emerald-200 mt-1">
+                              ✓ TRIP SUMMARY REGISTERED IN SYSTEM CARRIER LOG
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
 
                   </div>
                 ))}
@@ -2208,95 +2292,15 @@ export default function App() {
             </div>
           )}
 
-          {/* CODE HUB: EXPORTS FOR ACADEMIC PRESENTATION */}
-          {activeRole === 'codehub' && (
-            <div className="space-y-6">
-              
-              <div className="bg-white p-4 rounded-xl border border-indigo-200 bg-indigo-50/50 shadow-sm">
-                <div className="flex items-center space-x-2 text-indigo-900 mb-2 font-bold text-xs uppercase">
-                  <FileText className="w-5 h-5 text-indigo-700" />
-                  <span>Final-Year Engineering Presentation Code Hub</span>
-                </div>
-                <p className="text-xs text-indigo-950">
-                  This export drawer compiles the entire Python (Django) & MySQL Relational Database structure required for your engineering project portfolio folder. Clean syntax with structured models, forms, URLs, and installation checklists are provided below. Use the copy managers or save elements to separate code documents in single-clicks.
-                </p>
-              </div>
-
-              {/* Tabs selector */}
-              <div className="bg-white border p-1.5 rounded-lg flex space-x-1 overflow-x-auto text-xs font-mono font-bold">
-                <button onClick={() => setCodeTab('sql')} className={`px-3 py-1.5 rounded ${codeTab === 'sql' ? 'bg-indigo-950 text-white' : 'text-gray-500'}`}>1. MySQL DB schema</button>
-                <button onClick={() => setCodeTab('models')} className={`px-3 py-1.5 rounded ${codeTab === 'models' ? 'bg-indigo-950 text-white' : 'text-gray-500'}`}>2. models.py (Django)</button>
-                <button onClick={() => setCodeTab('views')} className={`px-3 py-1.5 rounded ${codeTab === 'views' ? 'bg-indigo-950 text-white' : 'text-gray-500'}`}>3. views.py (Controllers)</button>
-                <button onClick={() => setCodeTab('urls')} className={`px-3 py-1.5 rounded ${codeTab === 'urls' ? 'bg-indigo-950 text-white' : 'text-gray-500'}`}>4. urls.py (Router)</button>
-                <button onClick={() => setCodeTab('forms')} className={`px-3 py-1.5 rounded ${codeTab === 'forms' ? 'bg-indigo-950 text-white' : 'text-gray-500'}`}>5. forms.py (Forms)</button>
-                <button onClick={() => setCodeTab('readme')} className={`px-3 py-1.5 rounded ${codeTab === 'readme' ? 'bg-green-700 text-white' : 'text-green-700'}`}>📖 Deployment Tutorial</button>
-              </div>
-
-              {/* Code display frame */}
-              <div className="bg-gray-900 text-gray-100 p-4 rounded-xl flex flex-col font-mono text-[11px] shadow-2xl relative">
-                
-                <div className="flex justify-between items-center pb-2.5 mb-3 border-b border-gray-800">
-                  <span className="text-gray-400 capitalize">
-                    Active Module: {codeTab === 'sql' ? 'MySQL Database Tables' : codeTab === 'readme' ? 'Deployment Manual' : `Django ${codeTab}.py Blueprint`}
-                  </span>
-                  
-                  <div className="flex items-center space-x-2">
-                    <button 
-                      onClick={() => {
-                        let txt = '';
-                        if (codeTab === 'sql') txt = projectTemplates?.sqlSchema;
-                        else if (codeTab === 'models') txt = projectTemplates?.djangoModels;
-                        else if (codeTab === 'views') txt = projectTemplates?.djangoViews;
-                        else if (codeTab === 'urls') txt = projectTemplates?.djangoUrls;
-                        else if (codeTab === 'forms') txt = projectTemplates?.djangoForms;
-                        else if (codeTab === 'readme') txt = projectTemplates?.installationGuide;
-                        copyToClipboard(txt || '');
-                      }}
-                      className="bg-gray-800 hover:bg-gray-700 text-gray-200 px-3 py-1 rounded.flex items-center space-x-1 border border-gray-700"
-                    >
-                      <Copy className="w-3.5 h-3.5 inline mr-1" /> Copy Block
-                    </button>
-                    <button 
-                      onClick={() => {
-                        let txt = '';
-                        let name = '';
-                        if (codeTab === 'sql') { txt = projectTemplates?.sqlSchema; name = 'smart_goods_transport_schema.sql'; }
-                        else if (codeTab === 'models') { txt = projectTemplates?.djangoModels; name = 'models.py'; }
-                        else if (codeTab === 'views') { txt = projectTemplates?.djangoViews; name = 'views.py'; }
-                        else if (codeTab === 'urls') { txt = projectTemplates?.djangoUrls; name = 'urls.py'; }
-                        else if (codeTab === 'forms') { txt = projectTemplates?.djangoForms; name = 'forms.py'; }
-                        else if (codeTab === 'readme') { txt = projectTemplates?.installationGuide; name = 'INSTALL_GUIDE.md'; }
-                        handleDownloadFile(name, txt || '');
-                      }}
-                      className="bg-indigo-650 hover:bg-indigo-600 text-white px-3 py-1 rounded inline-flex items-center space-x-1"
-                    >
-                      <Download className="w-3.5 h-3.5 mr-1" /> Export File
-                    </button>
-                  </div>
-                </div>
-
-                <pre className="max-h-120 overflow-y-auto whitespace-pre-wrap leading-relaxed select-all">
-                  {codeTab === 'sql' && projectTemplates?.sqlSchema}
-                  {codeTab === 'models' && projectTemplates?.djangoModels}
-                  {codeTab === 'views' && projectTemplates?.djangoViews}
-                  {codeTab === 'urls' && projectTemplates?.djangoUrls}
-                  {codeTab === 'forms' && projectTemplates?.djangoForms}
-                  {codeTab === 'readme' && projectTemplates?.installationGuide}
-                </pre>
-              </div>
-
-            </div>
-          )}
-
         </main>
       </div>
 
       {/* Humble status bar matching High-Density Guidelines */}
       <footer className="h-6 bg-gray-50 border-t border-gray-200 text-[10px] text-gray-400 font-mono flex items-center justify-between px-6">
-        <div>MySQL Relational Schemas Live • Multi-role Authentication Console</div>
+        <div>IntelliDispatch Global Hub • Multi-role Authentication Console</div>
         <div className="flex items-center space-x-3">
           <span className="flex items-center"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5"></span>Server Host: Port 3000</span>
-          <span>© Final Year Engineering Project Submission Code base</span>
+          <span>© Smart Goods Transport Systems Inc.</span>
         </div>
       </footer>
 

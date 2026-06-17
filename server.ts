@@ -4,19 +4,19 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
-import {
-  SQL_SCHEMA,
-  DJANGO_MODELS,
-  DJANGO_VIEWS,
-  DJANGO_URLS,
-  DJANGO_FORMS,
-  INSTALLATION_GUIDE
-} from './src/projectCodeTemplates';
+// Project code templates imports removed as requested by the user
 
 dotenv.config();
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+let _filename: string;
+let _dirname: string;
+try {
+  _filename = fileURLToPath(import.meta.url);
+  _dirname = path.dirname(_filename);
+} catch (e) {
+  _filename = __filename;
+  _dirname = __dirname;
+}
 
 // ==========================================
 // IN-MEMORY COMPREHENSIVE SIMULATED DATABASE
@@ -667,7 +667,11 @@ async function startServer() {
         receiverName: buyer?.full_name || 'Buyer',
         receiverPhone: buyer?.phone || '',
         vehicleNo: vehicleObj?.vehicle_no || 'KA-03-HA-8842',
-        vehicleType: vehicleObj?.vehicle_type || 'Medium Van'
+        vehicleType: vehicleObj?.vehicle_type || 'Medium Van',
+        distance: (d as any).distance || Number((14.5 + (d.order_id % 9) * 3.7).toFixed(1)),
+        duration_minutes: (d as any).duration_minutes || (30 + (d.order_id % 7) * 8),
+        route_rating: (d as any).route_rating || null,
+        route_feedback: (d as any).route_feedback || null
       };
     });
     res.json(result);
@@ -736,6 +740,22 @@ async function startServer() {
 
     logActivity(parseInt(driverId), 'driver', `Updated Delivery Status for Order ORD-${orderId} to: ${status}`, req);
     res.json({ success: true });
+  });
+
+  app.post('/api/driver/delivery/:orderId/rate', (req, res) => {
+    const orderId = parseInt(req.params.orderId);
+    const { rating, feedback } = req.body;
+
+    const dd = db.delivery_details.find(x => x.order_id === orderId);
+    if (dd) {
+      (dd as any).route_rating = parseInt(rating);
+      if (feedback !== undefined) {
+        (dd as any).route_feedback = feedback;
+      }
+      logActivity(dd.driver_id, 'driver', `Rated route quality for Order ORD-${orderId} as ${rating} Stars: "${feedback || ''}"`, req);
+      return res.json({ success: true, delivery: dd });
+    }
+    return res.status(404).json({ error: 'Delivery record not found.' });
   });
 
   app.post('/api/driver/sos', (req, res) => {
@@ -927,17 +947,7 @@ async function startServer() {
     });
   });
 
-  // EXPORT PIPELINE: Download items for academic presentation
-  app.get('/api/student/exports', (req, res) => {
-    res.json({
-      sqlSchema: SQL_SCHEMA,
-      djangoModels: DJANGO_MODELS,
-      djangoViews: DJANGO_VIEWS,
-      djangoUrls: DJANGO_URLS,
-      djangoForms: DJANGO_FORMS,
-      installationGuide: INSTALLATION_GUIDE
-    });
-  });
+  // EXPORT PIPELINE: Removed as requested by user
 
   // Integrations flow
   const isProd = process.env.NODE_ENV === 'production';
@@ -951,7 +961,7 @@ async function startServer() {
     app.use('*', async (req, res, next) => {
       const url = req.originalUrl;
       try {
-        let template = await fs.promises.readFile(path.resolve(__dirname, 'index.html'), 'utf-8');
+        let template = await fs.promises.readFile(path.resolve(_dirname, 'index.html'), 'utf-8');
         template = await vite.transformIndexHtml(url, template);
         res.status(200).set({ 'Content-Type': 'text/html' }).end(template);
       } catch (e) {
@@ -960,9 +970,9 @@ async function startServer() {
       }
     });
   } else {
-    app.use(express.static(path.resolve(__dirname, 'dist')));
+    app.use(express.static(path.resolve(_dirname, 'dist')));
     app.get('*', (req, res) => {
-      res.sendFile(path.resolve(__dirname, 'dist', 'index.html'));
+      res.sendFile(path.resolve(_dirname, 'dist', 'index.html'));
     });
   }
 
