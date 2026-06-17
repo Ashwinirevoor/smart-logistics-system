@@ -1,0 +1,6 @@
+{
+  "name": "Smart Goods Transportation and Delivery Management System",
+  "description": "A comprehensive full-stack management and tracking application for goods transportation, connecting Admins, Sellers, Transporters, Drivers, and Receivers with real-time simulations, SQL schema downloads, and fully functional multi-role dashboards.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
